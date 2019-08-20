@@ -33,13 +33,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // Main menu commands.
 
     @IBAction func newWedge(sender: NSControl) {
-        withAnimation(.spring(stiffness: 70, damping: 10)) {
+        withAnimation(.spring()) {
             // Holding Option adds 50 wedges as a single model update.
             if NSApp?.currentEvent?.modifierFlags.contains(.option) ?? false {
-                sharedRing.batch {
-                    for _ in 0 ..< 50 {
-                        sharedRing.addWedge(.random)
-                    }
+                for _ in 0 ..< 50 {
+                    sharedRing.addWedge(.random)
                 }
             } else {
                 sharedRing.addWedge(.random)
@@ -48,7 +46,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @IBAction func clearWedges(sender: NSControl) {
-        withAnimation(.basic(duration: 1.0)) {
+        withAnimation(.easeInOut(duration: 1.0)) {
             sharedRing.reset()
         }
     }

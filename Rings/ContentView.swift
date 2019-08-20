@@ -26,18 +26,16 @@ struct ContentView: View {
         // wedge views, overlaying them via a ZStack.
 
         let wedges = ZStack {
-            ForEach(ring.wedgeIDs) { wedgeId in
-                WedgeView(wedge: self.ring.wedges[wedgeId]!)
+            ForEach(ring.wedgeIDs, id: \.self) { wedgeID in
+                WedgeView(wedge: self.ring.wedges[wedgeID]!)
 
                 // use a custom transition for insertions and deletions.
                 .transition(.scaleAndFade)
 
                 // remove wedges when they're tapped.
-                .tapAction {
-                    withAnimation(
-                        .fluidSpring(stiffness: 20, dampingFraction: 0.7)
-                    ) {
-                        self.ring.removeWedge(id: wedgeId)
+                .onTapGesture {
+                    withAnimation(.spring()) {
+                        self.ring.removeWedge(id: wedgeID)
                     }
                 }
             }
@@ -65,13 +63,13 @@ struct ContentView: View {
     // Button actions.
 
     func newWedge() {
-        withAnimation(.spring(stiffness: 70, damping: 10)) {
+        withAnimation(.spring()) {
             self.ring.addWedge(.random)
         }
     }
 
     func clear() {
-        withAnimation(.basic(duration: 1.0)) {
+        withAnimation(.easeInOut(duration: 1.0)) {
             self.ring.reset()
         }
     }

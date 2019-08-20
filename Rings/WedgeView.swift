@@ -47,8 +47,8 @@ struct WedgeShape: Shape {
 private struct WedgeGeometry {
     var wedge: Ring.Wedge
     var center: CGPoint
-    var innerRadius: Length
-    var outerRadius: Length
+    var innerRadius: CGFloat
+    var outerRadius: CGFloat
 
     init(_ wedge: Ring.Wedge, in rect: CGRect) {
         self.wedge = wedge
@@ -56,7 +56,7 @@ private struct WedgeGeometry {
         let radius = min(rect.width, rect.height) * 0.5
         innerRadius = radius / 4
         outerRadius = innerRadius +
-            (radius - innerRadius) * Length(wedge.depth)
+            (radius - innerRadius) * CGFloat(wedge.depth)
     }
 
     /// Returns the view location of the point in the wedge at unit-
@@ -67,8 +67,8 @@ private struct WedgeGeometry {
         let radius = lerp(innerRadius, outerRadius, by: unitPoint.y)
         let angle = lerp(wedge.start, wedge.end, by: Double(unitPoint.x))
 
-        return CGPoint(x: center.x + Length(cos(angle)) * radius,
-                       y: center.y + Length(sin(angle)) * radius)
+        return CGPoint(x: center.x + CGFloat(cos(angle)) * radius,
+                       y: center.y + CGFloat(sin(angle)) * radius)
     }
 }
 

@@ -9,7 +9,7 @@ import SwiftUI
 import Combine
 
 /// The data model for a single chart ring.
-class Ring: BindableObject {
+class Ring: ObservableObject {
     /// A single wedge within a chart ring.
     struct Wedge: Equatable {
         /// The wedge's width, as an angle in radians.
@@ -33,10 +33,40 @@ class Ring: BindableObject {
     }
 
     /// The collection of wedges, tracked by their id.
-    private(set) var wedges = [Int: Wedge]()
+    var wedges: [Int: Wedge] {
+        get {
+            if _wedgesNeedUpdate {
+                /// Recalculate locations, to pack within circle.
+                let total = wedgeIDs.reduce(0.0) { $0 + _wedges[$1]!.width }
+                let scale = (.pi * 2) / max(.pi * 2, total)
+                var location = 0.0
+                for id in wedgeIDs {
+                    var wedge = _wedges[id]!
+                    wedge.start = location * scale
+                    location += wedge.width
+                    wedge.end = location * scale
+                    _wedges[id] = wedge
+                }
+                _wedgesNeedUpdate = false
+            }
+            return _wedges
+        }
+        set {
+            objectWillChange.send()
+            _wedges = newValue
+            _wedgesNeedUpdate = true
+        }
+    }
+
+    private var _wedges = [Int: Wedge]()
+    private var _wedgesNeedUpdate = false
 
     /// The display order of the wedges.
-    private(set) var wedgeIDs = [Int]()
+    private(set) var wedgeIDs = [Int]() {
+        willSet {
+            objectWillChange.send()
+        }
+    }
 
     /// When true, periodically updates the data with random changes.
     var randomWalk = false { didSet { updateTimer() } }
@@ -45,45 +75,7 @@ class Ring: BindableObject {
     private var nextID = 0
 
     /// Trivial publisher for our changes.
-    let didChange = PassthroughSubject<Ring, Never>()
-
-    /// Called after each change; updates derived model values and posts
-    /// the notification.
-    private func modelDidChange() {
-        guard nestedUpdates == 0 else { return }
-
-        /// Recalculate locations, to pack within circle.
-
-        let total = wedgeIDs.reduce(0.0) { $0 + wedges[$1]!.width }
-        let scale = (.pi * 2) / max(.pi * 2, total)
-
-        var location = 0.0
-        for id in wedgeIDs {
-            var wedge = wedges[id]!
-            wedge.start = location * scale
-            location += wedge.width
-            wedge.end = location * scale
-            wedges[id] = wedge
-        }
-            
-        didChange.send(self)
-    }
-
-    /// Non-zero while a batch of updates is being processed.
-    private var nestedUpdates = 0
-
-    /// Invokes `body()` such that any changes it makes to the model
-    /// will only post a single notification to observers.
-    func batch(_ body: () -> Void) {
-        nestedUpdates += 1
-        defer {
-            nestedUpdates -= 1
-            if nestedUpdates == 0 {
-                modelDidChange()
-            }
-        }
-        body()
-    }
+    let objectWillChange = PassthroughSubject<Void, Never>()
 
     /// Adds a new wedge description to `array`.
     func addWedge(_ value: Wedge) {
@@ -91,7 +83,6 @@ class Ring: BindableObject {
         nextID += 1
         wedges[id] = value
         wedgeIDs.append(id)
-        modelDidChange()
     }
 
     /// Removes the wedge with `id`.
@@ -99,7 +90,6 @@ class Ring: BindableObject {
         if let indexToRemove = wedgeIDs.firstIndex(where: { $0 == id }) {
             wedgeIDs.remove(at: indexToRemove)
             wedges.removeValue(forKey: id)
-            modelDidChange()
         }
     }
 
@@ -108,22 +98,20 @@ class Ring: BindableObject {
         if !wedgeIDs.isEmpty {
             wedgeIDs = []
             wedges = [:]
-            modelDidChange()
         }
     }
 
     /// Randomly changes values of existing wedges.
     func randomize() {
-        withAnimation(.fluidSpring(stiffness: 10, dampingFraction: 0.5)) {
-            for id in wedgeIDs {
-                var wedge = wedges[id]!
+        withAnimation(.spring(response: 2, dampingFraction: 0.5)) {
+            wedges = wedges.mapValues {
+                var wedge = $0
                 wedge.width = .random(in: max(0.2, wedge.width - 0.2)
                     ... min(1, wedge.width + 0.2))
                 wedge.depth = .random(in: max(0.2, wedge.depth - 0.2)
                     ... min(1, wedge.depth + 0.2))
-                wedges[id] = wedge
+                return wedge
             }
-            modelDidChange()
         }
     }
 
@@ -142,7 +130,6 @@ class Ring: BindableObject {
             timer.invalidate()
             self.timer = nil
         }
-        modelDidChange()
     }
 }
 
